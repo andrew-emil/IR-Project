@@ -6,5 +6,7 @@ public class App {
         System.out.println("");
         Map<String, List<String>> positionalIndex = Calculations.positionalIndexGenerator();
         Map<String, int[]> termFrequencyMatrix = Calculations.termFrequencyGenerator(positionalIndex);
+        Calculations.weightTermFrequencyGenerator(termFrequencyMatrix);
+        Calculations.IDFMatrixGenerator(termFrequencyMatrix);
     }
 }
