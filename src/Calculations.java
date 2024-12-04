@@ -3,7 +3,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -12,67 +11,7 @@ public class Calculations {
     private static final String folderPath = (new File("").getAbsolutePath() + "\\data");
     private static final File[] listOfFiles = new File(folderPath).listFiles();
     private static final int numOfFiles = listOfFiles.length;
-    private static String[] docs = initializingDocs();
 
-    /**
-     * Initializes the document names from the files in the folder, sorted
-     * numerically.
-     *
-     * @return An array of document names.
-     */
-    private static String[] initializingDocs() {
-        if (listOfFiles == null || listOfFiles.length == 0) {
-            System.err.println("No files found in the directory: " + folderPath);
-            return new String[0];
-        }
-
-        String[] docs = new String[numOfFiles];
-        for (int index = 0; index < listOfFiles.length; index++) {
-            String[] doc = listOfFiles[index].getName().split("/");
-            docs[index] = doc[0].split(".txt")[0];
-        }
-        Arrays.sort(docs, Comparator.comparingInt(Integer::parseInt));
-        return docs;
-    }
-
-    private static void displayMatrix(String tableName, int width, Map<String, int[]> matrix) {
-        System.out.println(tableName);
-        System.out.println("=".repeat(100));
-        System.out.printf("%-15s | ", "Term");
-
-        for (String doc : docs) {
-            String docName = "d" + doc;
-            int leftPadding = (width - docName.length()) / 2;
-            int rightPadding = width - docName.length() - leftPadding;
-
-            String centeredDoc = " ".repeat(leftPadding) + docName + " ".repeat(rightPadding);
-            System.out.printf("%s|", centeredDoc);
-        }
-        System.out.println("");
-        System.out.println("-".repeat(100));
-
-        for (Map.Entry<String, int[]> entry : matrix.entrySet()) {
-            System.out.printf("%-15s | ", entry.getKey());
-            for (int num : entry.getValue()) {
-                int leftPadding = (width - 1) / 2;
-                int rightPadding = width - 1 - leftPadding;
-
-                String centeredDoc = " ".repeat(leftPadding) + num + " ".repeat(rightPadding);
-                System.out.printf("%s|", centeredDoc);
-            }
-            System.out.println("");
-            System.out.println("-".repeat(100));
-        }
-        System.out.println("");
-    }
-
-    /**
-     * Generates a positional index from a file and displays it in the console.
-     * 
-     * @return A map containing terms as keys and their respective positions as
-     *         values.
-     * @throws IOException If an I/O error occurs during file reading.
-     */
     public static Map<String, List<String>> positionalIndexGenerator() throws IOException {
         String folderPath = (new File("").getAbsolutePath()) + "\\map reduce";
         BufferedReader br = new BufferedReader(new FileReader(folderPath + "/positional index output.txt"));
@@ -108,14 +47,6 @@ public class Calculations {
         return positionalIndex;
     }
 
-    /**
-     * Generates a term frequency matrix from a positional index.
-     *
-     * @param positionalIndex A map containing terms and their positions.
-     * @return A term frequency matrix with terms as keys and frequency vectors as
-     *         values.
-     * @throws IOException If an I/O error occurs.
-     */
     public static Map<String, int[]> termFrequencyGenerator(Map<String, List<String>> positionalIndex)
             throws IOException {
         Map<String, int[]> termFrequencyMatrix = new LinkedHashMap<>();
@@ -138,21 +69,12 @@ public class Calculations {
             termFrequencyMatrix.put(term, vector);
         }
         System.out.println("");
-        displayMatrix("Term Frequency:", 6, termFrequencyMatrix);
+
+        Utils.displayMatrix("Term Frequency:", 6, termFrequencyMatrix);
 
         return termFrequencyMatrix;
     }
 
-    /**
-     * Generates a weight term frequency matrix from a term frequency.
-     *
-     * @param tf A term frequency matrix with terms as keys and frequency vectors as
-     *           values.
-     * @return A weight term frequency matrix with terms as keys and weight
-     *         frequency vectors as
-     *         values.
-     * @throws IOException If an I/O error occurs.
-     */
     public static Map<String, int[]> weightTermFrequencyGenerator(Map<String, int[]> tf) {
         Map<String, int[]> weightTF = new LinkedHashMap<>();
 
@@ -171,7 +93,7 @@ public class Calculations {
             weightTF.put(term, weightVector);
         }
 
-        displayMatrix("Weight Term Frequency:", 6, weightTF);
+        Utils.displayMatrix("Weight Term Frequency:", 6, weightTF);
         return weightTF;
     }
 
@@ -198,10 +120,86 @@ public class Calculations {
         System.out.println("-".repeat(50));
 
         idfMatrix
-                .forEach((term, vector) -> System.out.printf("%-15s |%-5s |%-10.5f\n", term,(int) vector[0], vector[1]));
+                .forEach((term, vector) -> System.out.printf("%-15s |%-5s |%-10.5f\n", term, (int) vector[0],
+                        vector[1]));
         System.out.println("=".repeat(50));
         System.out.println("");
 
         return idfMatrix;
+    }
+
+    public static Map<String, double[]> tf_idf(Map<String, int[]> tfMatrix, Map<String, double[]> idfMatrix) {
+        Map<String, double[]> tfidfMatrix = new LinkedHashMap<>();
+
+        for (Map.Entry<String, int[]> tfEntry : tfMatrix.entrySet()) {
+            String term = tfEntry.getKey();
+            int[] tfVector = tfEntry.getValue();
+            double[] idfVector = idfMatrix.get(term);
+            double[] tfidfVector = new double[tfVector.length];
+            for (int i = 0; i < tfVector.length; i++) {
+                tfidfVector[i] = tfVector[i] * idfVector[1]; // Multiply TF by IDF
+            }
+
+            tfidfMatrix.put(term, tfidfVector);
+        }
+        System.out.println("");
+
+        Utils.displayMatrixWithDouble("TF*IDF:", 9, tfidfMatrix);
+        return tfidfMatrix;
+    }
+
+    public static Map<String, Double> tf_idf_length(Map<String, double[]> tfidfMatrix) {
+        double[][] values = tfidfMatrix.values().toArray(new double[0][]);
+        int rowLength = values[0].length;
+
+        Map<String, Double> tf_idf_length = new LinkedHashMap<>();
+
+        for (int i = 0; i < rowLength; i++) {
+            double columnsSqr = 0;
+            for (Map.Entry<String, double[]> tfidfEntry : tfidfMatrix.entrySet()) {
+                double[] column = new double[] { tfidfEntry.getValue()[i] };
+                columnsSqr = columnsSqr + Math.pow(column[0], 2);
+
+            }
+            tf_idf_length.put("d" + (i + 1), Math.sqrt(columnsSqr));
+        }
+        System.out.println("Tf Idf length:");
+        System.out.println("=".repeat(50));
+        for (int i = 0; i < tf_idf_length.size(); i++) {
+            System.out.printf("%-15s |%.6f\n", "d" + (i + 1) + " length", tf_idf_length.get("d" + (i + 1)));
+            System.out.println("-".repeat(50));
+        }
+
+        return tf_idf_length;
+
+    }
+
+    public static Map<String, double[]> normalizedTFIDF(Map<String, double[]> tfidfMatrix,
+            Map<String, Double> tf_idf_length) {
+        Map<String, double[]> normalizedTFIDFMatrix = new LinkedHashMap<>();
+
+        double[] tf_idf_lengthVector = new double[numOfFiles];
+        int index = 0;
+
+        for (Map.Entry<String, Double> entry : tf_idf_length.entrySet()) {
+            tf_idf_lengthVector[index] = entry.getValue();
+            index++;
+        }
+
+        for (Map.Entry<String, double[]> entry : tfidfMatrix.entrySet()) {
+            String term = entry.getKey();
+            double[] normalizedVector = new double[numOfFiles];
+            for (int i = 0; i < normalizedVector.length; i++) {
+                // System.out.print(entry.getValue()[i] + " " + tf_idf_lengthVector[i] + "\n");
+
+                normalizedVector[i] = entry.getValue()[i] / tf_idf_lengthVector[i];
+            }
+
+            normalizedTFIDFMatrix.put(term, normalizedVector);
+        }
+        System.out.println("");
+        Utils.displayMatrixWithDouble("Normalized TF.IDF:", 9, normalizedTFIDFMatrix);
+
+        return normalizedTFIDFMatrix;
     }
 }
